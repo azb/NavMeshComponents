@@ -138,6 +138,11 @@ namespace UnityEngine.AI
 
         public void Bake()
         {
+            Bake(new NavMeshBuildDebugSettings());
+        }
+
+        public void Bake(NavMeshBuildDebugSettings debug)
+        {
             var sources = CollectSources();
 
             // Use unscaled bounds - this differs in behaviour from e.g. collider components.
@@ -149,7 +154,7 @@ namespace UnityEngine.AI
             }
 
             var data = NavMeshBuilder.BuildNavMeshData(GetBuildSettings(),
-                sources, sourcesBounds, transform.position, transform.rotation);
+                sources, sourcesBounds, transform.position, transform.rotation, debug);
 
             if (data != null)
             {
