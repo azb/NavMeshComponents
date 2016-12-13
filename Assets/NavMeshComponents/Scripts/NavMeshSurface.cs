@@ -387,7 +387,10 @@ namespace UnityEngine.AI
             if (HasTransformChanged())
             {
                 RemoveData();
-                AddData();
+                if (this.enabled)
+                {
+                    AddData();
+                }
             }
 
 #if UNITY_EDITOR
