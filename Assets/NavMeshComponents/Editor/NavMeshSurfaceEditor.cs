@@ -28,7 +28,7 @@ namespace UnityEditor.AI
         {
             public readonly GUIContent m_LayerMask = new GUIContent("Include Layers");
 
-            public readonly GUIContent m_ShowInputGeom = new GUIContent("Show Input Geom");
+            public readonly GUIContent m_ShowInputGeometry = new GUIContent("Show Input Geometry");
             public readonly GUIContent m_ShowVoxels = new GUIContent("Show Voxels");
             public readonly GUIContent m_ShowRegions = new GUIContent("Show Regions");
             public readonly GUIContent m_ShowRawContours = new GUIContent("Show Raw Contours");
@@ -232,7 +232,7 @@ namespace UnityEditor.AI
                 {
                     EditorGUI.indentLevel++;
 
-                    s_DebugVisualization.showInputGeom = EditorGUILayout.Toggle(s_Styles.m_ShowInputGeom, s_DebugVisualization.showInputGeom);
+                    s_DebugVisualization.showInputGeometry = EditorGUILayout.Toggle(s_Styles.m_ShowInputGeometry, s_DebugVisualization.showInputGeometry);
                     s_DebugVisualization.showVoxels = EditorGUILayout.Toggle(s_Styles.m_ShowVoxels, s_DebugVisualization.showVoxels);
                     s_DebugVisualization.showRegions = EditorGUILayout.Toggle(s_Styles.m_ShowRegions, s_DebugVisualization.showRegions);
                     s_DebugVisualization.showRawContours = EditorGUILayout.Toggle(s_Styles.m_ShowRawContours, s_DebugVisualization.showRawContours);
