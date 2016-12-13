@@ -45,6 +45,9 @@ namespace UnityEditor.AI
             public readonly GUIContent m_ShowContours = new GUIContent("Contours");
             public readonly GUIContent m_ShowPolyMesh = new GUIContent("Poly Mesh");
             public readonly GUIContent m_ShowPolyMeshDetail = new GUIContent("Poly Mesh Detail");
+
+            public readonly GUIContent m_BakeButton = new GUIContent("Bake");
+            public readonly GUIContent m_BakeButtonWithDebug = new GUIContent("Bake with Debug");
         }
 
         static Styles s_Styles;
@@ -370,7 +373,12 @@ namespace UnityEditor.AI
                     SceneView.RepaintAll();
                 }
 
-                if (GUILayout.Button("Bake"))
+                bool wantDebug = s_DebugVisualization.showInputGeometry || s_DebugVisualization.showVoxels ||
+                                 s_DebugVisualization.showRegions || s_DebugVisualization.showRawContours ||
+                                 s_DebugVisualization.showContours || s_DebugVisualization.showPolyMesh ||
+                                 s_DebugVisualization.showPolyMeshDetail;
+                GUIContent bakeButtonText = wantDebug ? s_Styles.m_BakeButtonWithDebug : s_Styles.m_BakeButton;
+                if (GUILayout.Button(bakeButtonText))
                 {
                     foreach (NavMeshSurface navSurface in targets)
                         BakeSurface(navSurface);
