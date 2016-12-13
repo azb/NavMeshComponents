@@ -24,17 +24,27 @@ namespace UnityEditor.AI
         SerializedProperty m_UseGeometry;
         SerializedProperty m_VoxelSize;
 
+        SerializedProperty m_DebugVisible;
+        SerializedProperty m_ShowInputGeometry;
+        SerializedProperty m_ShowVoxels;
+        SerializedProperty m_ShowRegions;
+        SerializedProperty m_ShowRawContours;
+        SerializedProperty m_ShowContours;
+        SerializedProperty m_ShowPolyMesh;
+        SerializedProperty m_ShowPolyMeshDetail;
+
         class Styles
         {
             public readonly GUIContent m_LayerMask = new GUIContent("Include Layers");
 
-            public readonly GUIContent m_ShowInputGeometry = new GUIContent("Show Input Geometry");
-            public readonly GUIContent m_ShowVoxels = new GUIContent("Show Voxels");
-            public readonly GUIContent m_ShowRegions = new GUIContent("Show Regions");
-            public readonly GUIContent m_ShowRawContours = new GUIContent("Show Raw Contours");
-            public readonly GUIContent m_ShowContours = new GUIContent("Show Contours");
-            public readonly GUIContent m_ShowPolyMesh = new GUIContent("Show Poly Mesh");
-            public readonly GUIContent m_ShowPolyMeshDetail = new GUIContent("Show Poly Mesh Detail");
+            public readonly GUIContent m_DebugVisible = new GUIContent("Visible Debug");
+            public readonly GUIContent m_ShowInputGeometry = new GUIContent("Input Geometry");
+            public readonly GUIContent m_ShowVoxels = new GUIContent("Voxels");
+            public readonly GUIContent m_ShowRegions = new GUIContent("Regions");
+            public readonly GUIContent m_ShowRawContours = new GUIContent("Raw Contours");
+            public readonly GUIContent m_ShowContours = new GUIContent("Contours");
+            public readonly GUIContent m_ShowPolyMesh = new GUIContent("Poly Mesh");
+            public readonly GUIContent m_ShowPolyMeshDetail = new GUIContent("Poly Mesh Detail");
         }
 
         static Styles s_Styles;
@@ -61,12 +71,33 @@ namespace UnityEditor.AI
             m_UseGeometry = serializedObject.FindProperty("m_UseGeometry");
             m_VoxelSize = serializedObject.FindProperty("m_VoxelSize");
 
+            m_DebugVisible = serializedObject.FindProperty("m_DebugVisible");
+            m_ShowInputGeometry = serializedObject.FindProperty ("m_ShowInputGeometry");
+            m_ShowVoxels = serializedObject.FindProperty ("m_ShowVoxels");
+            m_ShowRegions = serializedObject.FindProperty ("m_ShowRegions");
+            m_ShowRawContours = serializedObject.FindProperty ("m_ShowRawContours");
+            m_ShowContours = serializedObject.FindProperty ("m_ShowContours");
+            m_ShowPolyMesh = serializedObject.FindProperty ("m_ShowPolyMesh");
+            m_ShowPolyMeshDetail = serializedObject.FindProperty ("m_ShowPolyMeshDetail");
+
             NavMeshVisualizationSettings.showNavigation++;
+
+            Undo.undoRedoPerformed += UndoRedoPerformed;
         }
 
         void OnDisable()
         {
             NavMeshVisualizationSettings.showNavigation--;
+
+            Undo.undoRedoPerformed -= UndoRedoPerformed;
+        }
+
+        public virtual void UndoRedoPerformed()
+        {
+            foreach (NavMeshSurface navSurface in targets)
+            {
+                navSurface.UpdateDebugFlags();
+            }
         }
 
         static string GetAndEnsureTargetPath(NavMeshSurface surface)
@@ -167,6 +198,7 @@ namespace UnityEditor.AI
 
             EditorGUILayout.Space();
 
+            bool debugVisibilityChanged = false;
             m_OverrideVoxelSize.isExpanded = EditorGUILayout.Foldout(m_OverrideVoxelSize.isExpanded, "Advanced");
             if (m_OverrideVoxelSize.isExpanded)
             {
@@ -214,7 +246,7 @@ namespace UnityEditor.AI
                     if (!m_OverrideTileSize.hasMultipleDifferentValues)
                     {
                         if (m_OverrideTileSize.boolValue)
-                            EditorGUILayout.HelpBox("Tile size controls the how local the changes to the world are (rebuild or carve). Small tile size allows more local changes, while potentially generating more data in overal.", MessageType.None);
+                            EditorGUILayout.HelpBox("Tile size controls how local the changes to the world are (rebuild or carve). Small tile size allows more local changes, while potentially generating more data overall.", MessageType.None);
                     }
                     EditorGUI.indentLevel--;
                 }
@@ -255,7 +287,26 @@ namespace UnityEditor.AI
                         EditorGUI.indentLevel--;
                     }
 
-                    EditorGUILayout.HelpBox("Debug options will show various visualizations of the build process. The visualization are created when bake is pressed and shown at the location of the bake, and are not stored to disk.", MessageType.None);
+                    EditorGUILayout.HelpBox("Debug options will show various visualizations of the build process. The visualizations are created when Bake is pressed and shown at the location of the bake.", MessageType.None);
+
+                    EditorGUI.BeginChangeCheck();
+                    EditorGUILayout.Space ();
+
+                    m_DebugVisible.boolValue = EditorGUILayout.BeginToggleGroup(s_Styles.m_DebugVisible, m_DebugVisible.boolValue);
+
+                    EditorGUI.indentLevel++;
+                    EditorGUILayout.PropertyField(m_ShowInputGeometry, s_Styles.m_ShowInputGeometry);
+                    EditorGUILayout.PropertyField(m_ShowVoxels, s_Styles.m_ShowVoxels);
+                    EditorGUILayout.PropertyField(m_ShowRegions, s_Styles.m_ShowRegions);
+                    EditorGUILayout.PropertyField(m_ShowRawContours, s_Styles.m_ShowRawContours);
+                    EditorGUILayout.PropertyField(m_ShowContours, s_Styles.m_ShowContours);
+                    EditorGUILayout.PropertyField(m_ShowPolyMesh, s_Styles.m_ShowPolyMesh);
+                    EditorGUILayout.PropertyField(m_ShowPolyMeshDetail, s_Styles.m_ShowPolyMeshDetail);
+                    EditorGUI.indentLevel--;
+
+                    EditorGUILayout.EndToggleGroup();
+
+                    debugVisibilityChanged = EditorGUI.EndChangeCheck();
 
                     EditorGUI.indentLevel--;
                 }
@@ -296,6 +347,12 @@ namespace UnityEditor.AI
                         NavMeshEditorHelpers.OpenAgentSettings(navSurface.agentTypeID);
                     GUILayout.EndHorizontal();
                     hadError = true;
+                }
+
+                if (debugVisibilityChanged)
+                {
+                    navSurface.UpdateDebugFlags();
+                    SceneView.RepaintAll();
                 }
             }
 

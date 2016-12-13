@@ -64,6 +64,33 @@ namespace UnityEngine.AI
         float m_VoxelSize;
         public float voxelSize { get { return m_VoxelSize; } set { m_VoxelSize = value; } }
 
+#if UNITY_EDITOR
+        [SerializeField]
+        private bool m_DebugVisible = true;
+        public bool debugVisible { get { return m_DebugVisible; } set { m_DebugVisible = value; } }
+        [SerializeField]
+        private bool m_ShowInputGeometry = true;
+        public bool showInputGeometry { get { return m_ShowInputGeometry; } set { m_ShowInputGeometry = value; } }
+        [SerializeField]
+        private bool m_ShowVoxels = true;
+        public bool showVoxels { get { return m_ShowVoxels; } set { m_ShowVoxels = value; } }
+        [SerializeField]
+        private bool m_ShowRegions = true;
+        public bool showRegions { get { return m_ShowRegions; } set { m_ShowRegions = value; } }
+        [SerializeField]
+        private bool m_ShowRawContours = true;
+        public bool showRawContours { get { return m_ShowRawContours; } set { m_ShowRawContours = value; } }
+        [SerializeField]
+        private bool m_ShowContours = true;
+        public bool showContours { get { return m_ShowContours; } set { m_ShowContours = value; } }
+        [SerializeField]
+        private bool m_ShowPolyMesh = true;
+        public bool showPolyMesh { get { return m_ShowPolyMesh; } set { m_ShowPolyMesh = value; } }
+        [SerializeField]
+        private bool m_ShowPolyMeshDetail = true;
+        public bool showPolyMeshDetail { get { return m_ShowPolyMeshDetail; } set { m_ShowPolyMeshDetail = value; } }
+#endif
+
         // Currently not supported advanced options
         [SerializeField]
         bool m_BuildHeightMesh;
@@ -86,10 +113,28 @@ namespace UnityEngine.AI
             get { return s_NavMeshSurfaces; }
         }
 
+        public void UpdateDebugFlags()
+        {
+            if (m_BakedNavMeshData != null)
+            {
+                m_BakedNavMeshData.showInputGeometry = m_ShowInputGeometry && m_DebugVisible;
+                m_BakedNavMeshData.showVoxels = m_ShowVoxels && m_DebugVisible;
+                m_BakedNavMeshData.showRegions = m_ShowRegions && m_DebugVisible;
+                m_BakedNavMeshData.showRawContours = m_ShowRawContours && m_DebugVisible;
+                m_BakedNavMeshData.showContours = m_ShowContours && m_DebugVisible;
+                m_BakedNavMeshData.showPolyMesh = m_ShowPolyMesh && m_DebugVisible;
+                m_BakedNavMeshData.showPolyMeshDetail = m_ShowPolyMeshDetail && m_DebugVisible;
+            }
+        }
+
         void OnEnable()
         {
             Register(this);
             AddData();
+
+#if UNITY_EDITOR
+            UpdateDebugFlags();
+#endif
         }
 
         void OnDisable()
@@ -344,6 +389,10 @@ namespace UnityEngine.AI
                 RemoveData();
                 AddData();
             }
+
+#if UNITY_EDITOR
+            UpdateDebugFlags();
+#endif
         }
 
 #if UNITY_EDITOR
