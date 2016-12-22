@@ -113,19 +113,24 @@ namespace UnityEngine.AI
             get { return s_NavMeshSurfaces; }
         }
 
+#if UNITY_EDITOR
         public void UpdateDebugFlags()
         {
             if (m_BakedNavMeshData != null)
             {
-                m_BakedNavMeshData.showInputGeometry = m_ShowInputGeometry && m_DebugVisible;
-                m_BakedNavMeshData.showVoxels = m_ShowVoxels && m_DebugVisible;
-                m_BakedNavMeshData.showRegions = m_ShowRegions && m_DebugVisible;
-                m_BakedNavMeshData.showRawContours = m_ShowRawContours && m_DebugVisible;
-                m_BakedNavMeshData.showContours = m_ShowContours && m_DebugVisible;
-                m_BakedNavMeshData.showPolyMesh = m_ShowPolyMesh && m_DebugVisible;
-                m_BakedNavMeshData.showPolyMeshDetail = m_ShowPolyMeshDetail && m_DebugVisible;
+                NavMeshBuildDebugSettings debugFlags = new NavMeshBuildDebugSettings();
+                debugFlags.showInputGeometry = m_ShowInputGeometry && m_DebugVisible;
+                debugFlags.showVoxels = m_ShowVoxels && m_DebugVisible;
+                debugFlags.showRegions = m_ShowRegions && m_DebugVisible;
+                debugFlags.showRawContours = m_ShowRawContours && m_DebugVisible;
+                debugFlags.showContours = m_ShowContours && m_DebugVisible;
+                debugFlags.showPolyMesh = m_ShowPolyMesh && m_DebugVisible;
+                debugFlags.showPolyMeshDetail = m_ShowPolyMeshDetail && m_DebugVisible;
+
+                m_BakedNavMeshData.debugVisibility = debugFlags;
             }
         }
+#endif
 
         void OnEnable()
         {
