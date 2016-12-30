@@ -70,27 +70,35 @@ namespace UnityEngine.AI
         private bool m_DebugPersistent = false;
         public bool isDebugPersistent { get { return m_DebugPersistent; } set { m_DebugPersistent = value; } }
         [SerializeField]
+        [Tooltip("Show or hide all the available debug data for this NavMesh surface.")]
         private bool m_DebugVisible = true;
         public bool debugVisible { get { return m_DebugVisible; } set { m_DebugVisible = value; } }
         [SerializeField]
+        [Tooltip("The exact source geometry used when baking this NavMesh surface.")]
         private bool m_ShowInputGeometry = true;
         public bool showInputGeometry { get { return m_ShowInputGeometry; } set { m_ShowInputGeometry = value; } }
         [SerializeField]
+        [Tooltip("Show the voxels used for sampling the source geometry during baking.")]
         private bool m_ShowVoxels = true;
         public bool showVoxels { get { return m_ShowVoxels; } set { m_ShowVoxels = value; } }
         [SerializeField]
+        [Tooltip("Show the different flat regions computed during the NavMesh baking.")]
         private bool m_ShowRegions = true;
         public bool showRegions { get { return m_ShowRegions; } set { m_ShowRegions = value; } }
         [SerializeField]
+        [Tooltip("Show the contours of the relevant voxels used during baking.")]
         private bool m_ShowRawContours = true;
         public bool showRawContours { get { return m_ShowRawContours; } set { m_ShowRawContours = value; } }
         [SerializeField]
+        [Tooltip("Show the smoothed contours of the flat areas computed during the NavMesh baking.")]
         private bool m_ShowContours = true;
         public bool showContours { get { return m_ShowContours; } set { m_ShowContours = value; } }
         [SerializeField]
+        [Tooltip("Show the polygonal mesh constructed within the generated contours during the NavMesh baking.")]
         private bool m_ShowPolyMesh = true;
         public bool showPolyMesh { get { return m_ShowPolyMesh; } set { m_ShowPolyMesh = value; } }
         [SerializeField]
+        [Tooltip("Show the detailed polygonal mesh constructed by taking into account the source geometry.")]
         private bool m_ShowPolyMeshDetail = true;
         public bool showPolyMeshDetail { get { return m_ShowPolyMeshDetail; } set { m_ShowPolyMeshDetail = value; } }
 #endif

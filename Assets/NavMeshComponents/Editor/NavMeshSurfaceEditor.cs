@@ -268,8 +268,6 @@ namespace UnityEditor.AI
                 s_ShowDebugOptions = GUILayout.Toggle(s_ShowDebugOptions, "Debug", EditorStyles.foldout);
                 if (s_ShowDebugOptions)
                 {
-                    EditorGUI.indentLevel++;
-
                     s_DebugVisualization.showInputGeometry = EditorGUILayout.Toggle(s_Styles.m_ShowInputGeometry, s_DebugVisualization.showInputGeometry);
                     s_DebugVisualization.showVoxels = EditorGUILayout.Toggle(s_Styles.m_ShowVoxels, s_DebugVisualization.showVoxels);
                     s_DebugVisualization.showRegions = EditorGUILayout.Toggle(s_Styles.m_ShowRegions, s_DebugVisualization.showRegions);
@@ -293,8 +291,6 @@ namespace UnityEditor.AI
                         EditorGUI.indentLevel--;
                     }
 
-                    EditorGUILayout.HelpBox("Debug options will show various visualizations of the build process. The visualizations are created when Bake is pressed and shown at the location of the bake.", MessageType.None);
-
                     EditorGUI.BeginChangeCheck();
                     EditorGUILayout.Space ();
 
@@ -314,11 +310,11 @@ namespace UnityEditor.AI
 
                     debugVisibilityChanged = EditorGUI.EndChangeCheck();
 
-                    EditorGUI.indentLevel--;
-
                     EditorGUILayout.Space ();
                     EditorGUILayout.PropertyField(m_DebugPersistent, s_Styles.m_DebugPersistent);
                     s_DebugVisualization.isDebugPersistent = m_DebugPersistent.boolValue;
+
+                    EditorGUILayout.HelpBox("Debug options will show various visualizations of the build process. The visualizations are created when Bake is pressed and shown at the location of the bake.", MessageType.None);
                 }
 
                 EditorGUILayout.Space();
