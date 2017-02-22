@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using UnityEditor.IMGUI.Controls;
 using UnityEditor.SceneManagement;
+using UnityEditorInternal;
 using UnityEngine.AI;
 using UnityEngine;
-using System.Linq;
 
 namespace UnityEditor.AI
 {
@@ -60,6 +62,14 @@ namespace UnityEditor.AI
         static Color s_HandleColor = new Color(127f, 214f, 244f, 100f) / 255;
         static Color s_HandleColorSelected = new Color(127f, 214f, 244f, 210f) / 255;
         static Color s_HandleColorDisabled = new Color(127f * 0.75f, 214f * 0.75f, 244f * 0.75f, 100f) / 255;
+
+        static int s_HandleControlIDHint = typeof(NavMeshSurfaceEditor).Name.GetHashCode();
+        BoxBoundsHandle m_BoundsHandle = new BoxBoundsHandle(s_HandleControlIDHint);
+
+        bool editingCollider
+        {
+            get { return EditMode.editMode == EditMode.SceneViewEditMode.Collider && EditMode.IsOwner(this); }
+        }
 
         void OnEnable()
         {
@@ -193,8 +203,14 @@ namespace UnityEditor.AI
             if ((CollectObjects)m_CollectObjects.enumValueIndex == CollectObjects.Volume)
             {
                 EditorGUI.indentLevel++;
+                InspectorEditButtonGUI();
                 EditorGUILayout.PropertyField(m_Size);
                 EditorGUILayout.PropertyField(m_Center);
+            }
+            else
+            {
+                if (editingCollider)
+                    EditMode.QuitEditMode();
             }
 
             EditorGUILayout.PropertyField(m_LayerMask, s_Styles.m_LayerMask);
@@ -453,7 +469,21 @@ namespace UnityEditor.AI
             Gizmos.DrawIcon(navSurface.transform.position, "NavMeshSurface Icon", true);
         }
 
-        public void OnSceneGUI()
+        void InspectorEditButtonGUI()
+        {
+            var navSurface = (NavMeshSurface)target;
+            var bounds = new Bounds(navSurface.transform.position, navSurface.size);
+
+            EditMode.DoEditModeInspectorModeButton(
+                EditMode.SceneViewEditMode.Collider,
+                "Edit Volume",
+                EditorGUIUtility.IconContent("EditCollider"),
+                bounds,
+                this
+                );
+        }
+
+        void OnSceneGUI()
         {
             if (s_DebugVisualization.useFocus)
             {
@@ -462,6 +492,30 @@ namespace UnityEditor.AI
                 s_DebugVisualization.focusPoint = Handles.PositionHandle(s_DebugVisualization.focusPoint, Quaternion.identity);
                 if (EditorGUI.EndChangeCheck())
                     Repaint();
+            }
+
+            if (!editingCollider)
+                return;
+
+            var navSurface = (NavMeshSurface)target;
+            var color = navSurface.enabled ? s_HandleColor : s_HandleColorDisabled;
+            var localToWorld = Matrix4x4.TRS(navSurface.transform.position, navSurface.transform.rotation, Vector3.one);
+            using (new Handles.DrawingScope(color, localToWorld))
+            {
+                m_BoundsHandle.center = navSurface.center;
+                m_BoundsHandle.size = navSurface.size;
+
+                EditorGUI.BeginChangeCheck();
+                m_BoundsHandle.DrawHandle();
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Undo.RecordObject(navSurface, "Modified NavMesh Surface");
+                    Vector3 center = m_BoundsHandle.center;
+                    Vector3 size = m_BoundsHandle.size;
+                    navSurface.center = center;
+                    navSurface.size = size;
+                    EditorUtility.SetDirty(target);
+                }
             }
         }
 
