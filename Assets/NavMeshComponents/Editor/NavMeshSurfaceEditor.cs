@@ -289,20 +289,6 @@ namespace UnityEditor.AI
                     s_DebugVisualization.showPolyMesh = EditorGUILayout.Toggle(s_Styles.m_ShowPolyMesh, s_DebugVisualization.showPolyMesh);
                     s_DebugVisualization.showPolyMeshDetail = EditorGUILayout.Toggle(s_Styles.m_ShowPolyMeshDetail, s_DebugVisualization.showPolyMeshDetail);
 
-                    var useFocus = EditorGUILayout.Toggle(new GUIContent("Use Debug Focus"), s_DebugVisualization.useFocus);
-                    if (useFocus != s_DebugVisualization.useFocus)
-                    {
-                        // Refresh Scene view.
-                        SceneView.RepaintAll();
-                        s_DebugVisualization.useFocus = useFocus;
-                    }
-
-                    if (s_DebugVisualization.useFocus)
-                    {
-                        EditorGUI.indentLevel++;
-                        s_DebugVisualization.focusPoint = EditorGUILayout.Vector3Field(new GUIContent("Focus Point"), s_DebugVisualization.focusPoint);
-                        EditorGUI.indentLevel--;
-                    }
 
                     EditorGUI.BeginChangeCheck();
                     EditorGUILayout.Space ();
@@ -454,12 +440,6 @@ namespace UnityEditor.AI
             Gizmos.matrix = oldMatrix;
             Gizmos.color = oldColor;
 
-            if (s_DebugVisualization.useFocus)
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawCube(s_DebugVisualization.focusPoint, new Vector3(0.1f, 0.1f, 0.1f));
-            }
-
             Gizmos.DrawIcon(navSurface.transform.position, "NavMeshSurface Icon", true);
         }
 
@@ -479,15 +459,6 @@ namespace UnityEditor.AI
 
         void OnSceneGUI()
         {
-            if (s_DebugVisualization.useFocus)
-            {
-                Handles.Label(s_DebugVisualization.focusPoint, "Focus Point");
-                EditorGUI.BeginChangeCheck();
-                s_DebugVisualization.focusPoint = Handles.PositionHandle(s_DebugVisualization.focusPoint, Quaternion.identity);
-                if (EditorGUI.EndChangeCheck())
-                    Repaint();
-            }
-
             if (!editingCollider)
                 return;
 
