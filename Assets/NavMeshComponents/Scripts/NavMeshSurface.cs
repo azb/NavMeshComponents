@@ -66,10 +66,6 @@ namespace UnityEngine.AI
 
 #if UNITY_EDITOR
         [SerializeField]
-        [Tooltip("The generated debug data can be stored in the resulting NavMesh asset.")]
-        private bool m_DebugPersistent = false;
-        public bool isDebugPersistent { get { return m_DebugPersistent; } set { m_DebugPersistent = value; } }
-        [SerializeField]
         [Tooltip("Show or hide all the available debug data for this NavMesh surface.")]
         private bool m_DebugVisible = true;
         public bool debugVisible { get { return m_DebugVisible; } set { m_DebugVisible = value; } }
@@ -138,7 +134,6 @@ namespace UnityEngine.AI
                 debugFlags.showContours = m_ShowContours && m_DebugVisible;
                 debugFlags.showPolyMesh = m_ShowPolyMesh && m_DebugVisible;
                 debugFlags.showPolyMeshDetail = m_ShowPolyMeshDetail && m_DebugVisible;
-                debugFlags.isDebugPersistent = m_DebugPersistent;
 
                 m_BakedNavMeshData.debugVisibility = debugFlags;
             }

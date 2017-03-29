@@ -26,7 +26,6 @@ namespace UnityEditor.AI
         SerializedProperty m_UseGeometry;
         SerializedProperty m_VoxelSize;
 
-        SerializedProperty m_DebugPersistent;
         SerializedProperty m_DebugVisible;
         SerializedProperty m_ShowInputGeometry;
         SerializedProperty m_ShowVoxels;
@@ -40,7 +39,6 @@ namespace UnityEditor.AI
         {
             public readonly GUIContent m_LayerMask = new GUIContent("Include Layers");
 
-            public readonly GUIContent m_DebugPersistent = new GUIContent("Save debug data");
             public readonly GUIContent m_DebugVisible = new GUIContent("Visible Debug");
             public readonly GUIContent m_ShowInputGeometry = new GUIContent("Input Geometry");
             public readonly GUIContent m_ShowVoxels = new GUIContent("Voxels");
@@ -86,7 +84,6 @@ namespace UnityEditor.AI
             m_UseGeometry = serializedObject.FindProperty("m_UseGeometry");
             m_VoxelSize = serializedObject.FindProperty("m_VoxelSize");
 
-            m_DebugPersistent = serializedObject.FindProperty("m_DebugPersistent");
             m_DebugVisible = serializedObject.FindProperty("m_DebugVisible");
             m_ShowInputGeometry = serializedObject.FindProperty ("m_ShowInputGeometry");
             m_ShowVoxels = serializedObject.FindProperty ("m_ShowVoxels");
@@ -326,9 +323,6 @@ namespace UnityEditor.AI
 
                     debugVisibilityChanged = EditorGUI.EndChangeCheck();
 
-                    EditorGUILayout.Space ();
-                    EditorGUILayout.PropertyField(m_DebugPersistent, s_Styles.m_DebugPersistent);
-                    s_DebugVisualization.isDebugPersistent = m_DebugPersistent.boolValue;
 
                     EditorGUILayout.HelpBox("Debug options will show various visualizations of the build process. The visualizations are created when Bake is pressed and shown at the location of the bake.", MessageType.None);
                 }
