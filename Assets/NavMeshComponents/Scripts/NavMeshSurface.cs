@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace UnityEngine.AI
 {
@@ -86,7 +87,7 @@ namespace UnityEngine.AI
         private bool m_ShowRawContours = true;
         public bool showRawContours { get { return m_ShowRawContours; } set { m_ShowRawContours = value; } }
         [SerializeField]
-        [Tooltip("Show the smoothed contours of the flat areas computed during the NavMesh baking.")]
+        [Tooltip("Show the simplified contours of the flat areas computed during the NavMesh baking.")]
         private bool m_ShowContours = true;
         public bool showContours { get { return m_ShowContours; } set { m_ShowContours = value; } }
         [SerializeField]
@@ -97,6 +98,9 @@ namespace UnityEngine.AI
         [Tooltip("Show the detailed polygonal mesh constructed by taking into account the source geometry.")]
         private bool m_ShowPolyMeshDetail = true;
         public bool showPolyMeshDetail { get { return m_ShowPolyMeshDetail; } set { m_ShowPolyMeshDetail = value; } }
+
+        [HideInInspector]
+        public NavMeshBuildDebugFlags m_VisibleDebug = NavMeshBuildDebugFlags.All;
 #endif
 
         // Currently not supported advanced options
@@ -124,18 +128,49 @@ namespace UnityEngine.AI
 #if UNITY_EDITOR
         public void UpdateDebugFlags()
         {
-            if (m_BakedNavMeshData != null)
+            m_VisibleDebug = NavMeshBuildDebugFlags.None;
+            if (m_DebugVisible)
             {
-                NavMeshBuildDebugSettings debugFlags = new NavMeshBuildDebugSettings();
-                debugFlags.showInputGeometry = m_ShowInputGeometry && m_DebugVisible;
-                debugFlags.showVoxels = m_ShowVoxels && m_DebugVisible;
-                debugFlags.showRegions = m_ShowRegions && m_DebugVisible;
-                debugFlags.showRawContours = m_ShowRawContours && m_DebugVisible;
-                debugFlags.showContours = m_ShowContours && m_DebugVisible;
-                debugFlags.showPolyMesh = m_ShowPolyMesh && m_DebugVisible;
-                debugFlags.showPolyMeshDetail = m_ShowPolyMeshDetail && m_DebugVisible;
+                if (m_ShowInputGeometry)
+                {
+                    m_VisibleDebug |= NavMeshBuildDebugFlags.InputGeometry;
+                }
+                if (m_ShowVoxels)
+                {
+                    m_VisibleDebug |= NavMeshBuildDebugFlags.Voxels;
+                }
+                if (m_ShowRegions)
+                {
+                    m_VisibleDebug |= NavMeshBuildDebugFlags.Regions;
+                }
+                if (m_ShowRawContours)
+                {
+                    m_VisibleDebug |= NavMeshBuildDebugFlags.RawContours;
+                }
+                if (m_ShowContours)
+                {
+                    m_VisibleDebug |= NavMeshBuildDebugFlags.SimplifiedContours;
+                }
+                if (m_ShowPolyMesh)
+                {
+                    m_VisibleDebug |= NavMeshBuildDebugFlags.PolygonMeshes;
+                }
+                if (m_ShowPolyMeshDetail)
+                {
+                    m_VisibleDebug |= NavMeshBuildDebugFlags.PolygonMeshesDetail;
+                }
+            }
+        }
 
-                m_BakedNavMeshData.debugVisibility = debugFlags;
+        public static void ApplyDebugFlags(ref NavMeshBuildDebugFlags flags, NavMeshBuildDebugFlags toSet, bool active)
+        {
+            if (active)
+            {
+                flags |= toSet;
+            }
+            else
+            {
+                flags &= ~toSet;
             }
         }
 #endif
@@ -199,7 +234,7 @@ namespace UnityEngine.AI
             Bake(new NavMeshBuildDebugSettings());
         }
 
-        public void Bake(NavMeshBuildDebugSettings debug)
+        public void Bake(NavMeshBuildDebugSettings debugSettings)
         {
             var sources = CollectSources();
 
@@ -211,8 +246,9 @@ namespace UnityEngine.AI
                 sourcesBounds = CalculateWorldBounds(sources);
             }
 
-            var data = NavMeshBuilder.BuildNavMeshData(GetBuildSettings(),
-                sources, sourcesBounds, transform.position, transform.rotation, debug);
+            NavMeshBuildSettings settings = GetBuildSettings();
+            settings.debug = debugSettings;
+            var data = NavMeshBuilder.BuildNavMeshData(settings, sources, sourcesBounds, transform.position, transform.rotation);
 
             if (data != null)
             {

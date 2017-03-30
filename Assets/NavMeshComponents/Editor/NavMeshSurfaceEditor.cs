@@ -44,9 +44,9 @@ namespace UnityEditor.AI
             public readonly GUIContent m_ShowVoxels = new GUIContent("Voxels");
             public readonly GUIContent m_ShowRegions = new GUIContent("Regions");
             public readonly GUIContent m_ShowRawContours = new GUIContent("Raw Contours");
-            public readonly GUIContent m_ShowContours = new GUIContent("Contours");
-            public readonly GUIContent m_ShowPolyMesh = new GUIContent("Poly Mesh");
-            public readonly GUIContent m_ShowPolyMeshDetail = new GUIContent("Poly Mesh Detail");
+            public readonly GUIContent m_ShowContours = new GUIContent("Simplified Contours");
+            public readonly GUIContent m_ShowPolyMesh = new GUIContent("Polygon Meshes");
+            public readonly GUIContent m_ShowPolyMeshDetail = new GUIContent("Polygon Meshes Detail");
 
             public readonly GUIContent m_BakeButton = new GUIContent("Bake");
             public readonly GUIContent m_BakeButtonWithDebug = new GUIContent("Bake with Debug");
@@ -96,6 +96,8 @@ namespace UnityEditor.AI
             NavMeshVisualizationSettings.showNavigation++;
 
             Undo.undoRedoPerformed += UndoRedoPerformed;
+
+            s_DebugVisualization.flags = NavMeshBuildDebugFlags.All;
         }
 
         void OnDisable()
@@ -278,16 +280,25 @@ namespace UnityEditor.AI
                 }
 
                 // Debug options
-                s_ShowDebugOptions = GUILayout.Toggle(s_ShowDebugOptions, "Debug", EditorStyles.foldout);
+                s_ShowDebugOptions = GUILayout.Toggle(s_ShowDebugOptions, "Debug data to collect", EditorStyles.foldout);
                 if (s_ShowDebugOptions)
                 {
-                    s_DebugVisualization.showInputGeometry = EditorGUILayout.Toggle(s_Styles.m_ShowInputGeometry, s_DebugVisualization.showInputGeometry);
-                    s_DebugVisualization.showVoxels = EditorGUILayout.Toggle(s_Styles.m_ShowVoxels, s_DebugVisualization.showVoxels);
-                    s_DebugVisualization.showRegions = EditorGUILayout.Toggle(s_Styles.m_ShowRegions, s_DebugVisualization.showRegions);
-                    s_DebugVisualization.showRawContours = EditorGUILayout.Toggle(s_Styles.m_ShowRawContours, s_DebugVisualization.showRawContours);
-                    s_DebugVisualization.showContours = EditorGUILayout.Toggle(s_Styles.m_ShowContours, s_DebugVisualization.showContours);
-                    s_DebugVisualization.showPolyMesh = EditorGUILayout.Toggle(s_Styles.m_ShowPolyMesh, s_DebugVisualization.showPolyMesh);
-                    s_DebugVisualization.showPolyMeshDetail = EditorGUILayout.Toggle(s_Styles.m_ShowPolyMeshDetail, s_DebugVisualization.showPolyMeshDetail);
+                    var collectedDebug = s_DebugVisualization.flags;
+                    var bShowInputGeometry = EditorGUILayout.Toggle(s_Styles.m_ShowInputGeometry, (collectedDebug & NavMeshBuildDebugFlags.InputGeometry) != 0);
+                    var bShowVoxels = EditorGUILayout.Toggle(s_Styles.m_ShowVoxels, (collectedDebug & NavMeshBuildDebugFlags.Voxels) != 0);
+                    var bShowRegions = EditorGUILayout.Toggle(s_Styles.m_ShowRegions, (collectedDebug & NavMeshBuildDebugFlags.Regions) != 0);
+                    var bShowRawContours = EditorGUILayout.Toggle(s_Styles.m_ShowRawContours, (collectedDebug & NavMeshBuildDebugFlags.RawContours) != 0);
+                    var bShowContours = EditorGUILayout.Toggle(s_Styles.m_ShowContours, (collectedDebug & NavMeshBuildDebugFlags.SimplifiedContours) != 0);
+                    var bShowPolyMesh = EditorGUILayout.Toggle(s_Styles.m_ShowPolyMesh, (collectedDebug & NavMeshBuildDebugFlags.PolygonMeshes) != 0);
+                    var bShowPolyMeshDetail = EditorGUILayout.Toggle(s_Styles.m_ShowPolyMeshDetail, (collectedDebug & NavMeshBuildDebugFlags.PolygonMeshesDetail) != 0);
+                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.InputGeometry, bShowInputGeometry);
+                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.Voxels, bShowVoxels);
+                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.Regions, bShowRegions);
+                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.RawContours, bShowRawContours);
+                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.SimplifiedContours, bShowContours);
+                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.PolygonMeshes, bShowPolyMesh);
+                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.PolygonMeshesDetail, bShowPolyMeshDetail);
+                    s_DebugVisualization.flags = collectedDebug;
 
 
                     EditorGUI.BeginChangeCheck();
@@ -309,8 +320,7 @@ namespace UnityEditor.AI
 
                     debugVisibilityChanged = EditorGUI.EndChangeCheck();
 
-
-                    EditorGUILayout.HelpBox("Debug options will show various visualizations of the build process. The visualizations are created when Bake is pressed and shown at the location of the bake.", MessageType.None);
+                    EditorGUILayout.HelpBox("Debug options help visualize various stages of the NavMesh building process. Data is collected when Bake is pressed and it is shown at the location where the NavMesh is built.", MessageType.None);
                 }
 
                 EditorGUILayout.Space();
@@ -372,10 +382,7 @@ namespace UnityEditor.AI
                     SceneView.RepaintAll();
                 }
 
-                bool wantDebug = s_DebugVisualization.showInputGeometry || s_DebugVisualization.showVoxels ||
-                                 s_DebugVisualization.showRegions || s_DebugVisualization.showRawContours ||
-                                 s_DebugVisualization.showContours || s_DebugVisualization.showPolyMesh ||
-                                 s_DebugVisualization.showPolyMeshDetail;
+                bool wantDebug = s_DebugVisualization.flags != NavMeshBuildDebugFlags.None;
                 GUIContent bakeButtonText = wantDebug ? s_Styles.m_BakeButtonWithDebug : s_Styles.m_BakeButton;
                 if (GUILayout.Button(bakeButtonText))
                 {
@@ -391,6 +398,8 @@ namespace UnityEditor.AI
         static void RenderBoxGizmoSelected(NavMeshSurface navSurface, GizmoType gizmoType)
         {
             RenderBoxGizmo(navSurface, gizmoType, true);
+
+            RenderBuildDebug(navSurface);
         }
 
         [DrawGizmo(GizmoType.NotInSelectionHierarchy | GizmoType.Pickable)]
@@ -400,6 +409,17 @@ namespace UnityEditor.AI
                 RenderBoxGizmo(navSurface, gizmoType, false);
             else
                 Gizmos.DrawIcon(navSurface.transform.position, "NavMeshSurface Icon", true);
+
+            RenderBuildDebug(navSurface);
+        }
+
+        private static void RenderBuildDebug(NavMeshSurface navSurface)
+        {
+            if (navSurface.bakedNavMeshData)
+            {
+                navSurface.UpdateDebugFlags();
+                NavMeshEditorHelpers.DrawBuildDebug(navSurface.bakedNavMeshData, navSurface.m_VisibleDebug);
+            }
         }
 
         static void RenderBoxGizmo(NavMeshSurface navSurface, GizmoType gizmoType, bool selected)
