@@ -1,3 +1,5 @@
+This branch contains changes related to the visualization of debug data collected during the NavMesh build process. It requires a special Editor build. A draft of the documentation can be found here https://docs.google.com/a/unity3d.com/document/d/1hY2_9fIKwt-QVTc5_Rf_MVkJjiTBm9_i2RgGEMod6MI/edit?usp=sharing 
+
 # Components for Runtime NavMesh Building
 
 Here we introduce four components for the navigation system:
