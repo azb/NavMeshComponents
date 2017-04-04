@@ -26,7 +26,6 @@ namespace UnityEditor.AI
         SerializedProperty m_UseGeometry;
         SerializedProperty m_VoxelSize;
 
-        SerializedProperty m_DebugVisible;
         SerializedProperty m_ShowInputGeometry;
         SerializedProperty m_ShowVoxels;
         SerializedProperty m_ShowRegions;
@@ -39,7 +38,7 @@ namespace UnityEditor.AI
         {
             public readonly GUIContent m_LayerMask = new GUIContent("Include Layers");
 
-            public readonly GUIContent m_DebugVisible = new GUIContent("Visible Debug");
+            public readonly GUIContent m_DebugEnabled = new GUIContent("Debug Visualization");
             public readonly GUIContent m_ShowInputGeometry = new GUIContent("Input Geometry");
             public readonly GUIContent m_ShowVoxels = new GUIContent("Voxels");
             public readonly GUIContent m_ShowRegions = new GUIContent("Regions");
@@ -49,13 +48,9 @@ namespace UnityEditor.AI
             public readonly GUIContent m_ShowPolyMeshDetail = new GUIContent("Polygon Meshes Detail");
 
             public readonly GUIContent m_BakeButton = new GUIContent("Bake");
-            public readonly GUIContent m_BakeButtonWithDebug = new GUIContent("Bake with Debug");
         }
 
         static Styles s_Styles;
-
-        static NavMeshBuildDebugSettings s_DebugVisualization = new NavMeshBuildDebugSettings();
-        static bool s_ShowDebugOptions;
 
         static Color s_HandleColor = new Color(127f, 214f, 244f, 100f) / 255;
         static Color s_HandleColorSelected = new Color(127f, 214f, 244f, 210f) / 255;
@@ -84,7 +79,6 @@ namespace UnityEditor.AI
             m_UseGeometry = serializedObject.FindProperty("m_UseGeometry");
             m_VoxelSize = serializedObject.FindProperty("m_VoxelSize");
 
-            m_DebugVisible = serializedObject.FindProperty("m_DebugVisible");
             m_ShowInputGeometry = serializedObject.FindProperty ("m_ShowInputGeometry");
             m_ShowVoxels = serializedObject.FindProperty ("m_ShowVoxels");
             m_ShowRegions = serializedObject.FindProperty ("m_ShowRegions");
@@ -94,25 +88,11 @@ namespace UnityEditor.AI
             m_ShowPolyMeshDetail = serializedObject.FindProperty ("m_ShowPolyMeshDetail");
 
             NavMeshVisualizationSettings.showNavigation++;
-
-            Undo.undoRedoPerformed += UndoRedoPerformed;
-
-            s_DebugVisualization.flags = NavMeshBuildDebugFlags.All;
         }
 
         void OnDisable()
         {
             NavMeshVisualizationSettings.showNavigation--;
-
-            Undo.undoRedoPerformed -= UndoRedoPerformed;
-        }
-
-        public virtual void UndoRedoPerformed()
-        {
-            foreach (NavMeshSurface navSurface in targets)
-            {
-                navSurface.UpdateDebugFlags();
-            }
         }
 
         static string GetAndEnsureTargetPath(NavMeshSurface surface)
@@ -153,7 +133,9 @@ namespace UnityEditor.AI
         void BakeSurface(NavMeshSurface navSurface)
         {
             var assetToDelete = GetNavMeshAssetToDelete(navSurface);
-            navSurface.Bake(s_DebugVisualization);
+            NavMeshBuildDebugSettings debugSettings = new NavMeshBuildDebugSettings();
+            debugSettings.flags = navSurface.debugEnabled ? NavMeshBuildDebugFlags.All : NavMeshBuildDebugFlags.None;
+            navSurface.Bake(debugSettings);
             EditorUtility.SetDirty(navSurface);
 
             if (assetToDelete)
@@ -169,6 +151,7 @@ namespace UnityEditor.AI
             var assetToDelete = GetNavMeshAssetToDelete(navSurface);
             navSurface.RemoveData();
             navSurface.bakedNavMeshData = null;
+            navSurface.InvalidateDebug();
             EditorUtility.SetDirty(navSurface);
 
             if (assetToDelete)
@@ -219,7 +202,6 @@ namespace UnityEditor.AI
 
             EditorGUILayout.Space();
 
-            bool debugVisibilityChanged = false;
             m_OverrideVoxelSize.isExpanded = EditorGUILayout.Foldout(m_OverrideVoxelSize.isExpanded, "Advanced");
             if (m_OverrideVoxelSize.isExpanded)
             {
@@ -272,7 +254,6 @@ namespace UnityEditor.AI
                     EditorGUI.indentLevel--;
                 }
 
-
                 // Height mesh
                 using (new EditorGUI.DisabledScope(true))
                 {
@@ -280,31 +261,55 @@ namespace UnityEditor.AI
                 }
 
                 // Debug options
-                s_ShowDebugOptions = GUILayout.Toggle(s_ShowDebugOptions, "Debug data to collect", EditorStyles.foldout);
-                if (s_ShowDebugOptions)
+                EditorGUILayout.Space();
+
+                var debugEnabledForAllTargets = true;
+                foreach (var navSurface in targets)
                 {
-                    var collectedDebug = s_DebugVisualization.flags;
-                    var bShowInputGeometry = EditorGUILayout.Toggle(s_Styles.m_ShowInputGeometry, (collectedDebug & NavMeshBuildDebugFlags.InputGeometry) != 0);
-                    var bShowVoxels = EditorGUILayout.Toggle(s_Styles.m_ShowVoxels, (collectedDebug & NavMeshBuildDebugFlags.Voxels) != 0);
-                    var bShowRegions = EditorGUILayout.Toggle(s_Styles.m_ShowRegions, (collectedDebug & NavMeshBuildDebugFlags.Regions) != 0);
-                    var bShowRawContours = EditorGUILayout.Toggle(s_Styles.m_ShowRawContours, (collectedDebug & NavMeshBuildDebugFlags.RawContours) != 0);
-                    var bShowContours = EditorGUILayout.Toggle(s_Styles.m_ShowContours, (collectedDebug & NavMeshBuildDebugFlags.SimplifiedContours) != 0);
-                    var bShowPolyMesh = EditorGUILayout.Toggle(s_Styles.m_ShowPolyMesh, (collectedDebug & NavMeshBuildDebugFlags.PolygonMeshes) != 0);
-                    var bShowPolyMeshDetail = EditorGUILayout.Toggle(s_Styles.m_ShowPolyMeshDetail, (collectedDebug & NavMeshBuildDebugFlags.PolygonMeshesDetail) != 0);
-                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.InputGeometry, bShowInputGeometry);
-                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.Voxels, bShowVoxels);
-                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.Regions, bShowRegions);
-                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.RawContours, bShowRawContours);
-                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.SimplifiedContours, bShowContours);
-                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.PolygonMeshes, bShowPolyMesh);
-                    NavMeshSurface.ApplyDebugFlags(ref collectedDebug, NavMeshBuildDebugFlags.PolygonMeshesDetail, bShowPolyMeshDetail);
-                    s_DebugVisualization.flags = collectedDebug;
+                    if (!((NavMeshSurface)navSurface).debugEnabled)
+                    {
+                        debugEnabledForAllTargets = false;
+                        break;
+                    }
+                }
 
+                var debugEnabled = EditorGUILayout.Toggle(s_Styles.m_DebugEnabled, debugEnabledForAllTargets);
+                if (debugEnabled != debugEnabledForAllTargets)
+                {
+                    foreach (var navSurface in targets)
+                    {
+                        ((NavMeshSurface)navSurface).debugEnabled = debugEnabled;
+                    }
+                    SceneView.RepaintAll();
+                }
 
-                    EditorGUI.BeginChangeCheck();
-                    EditorGUILayout.Space ();
+                if (debugEnabled)
+                {
+                    var targetsMissingDebug = 0;
+                    foreach (var o in targets)
+                    {
+                        var navSurface = (NavMeshSurface)o;
+                        if (debugEnabled && !navSurface.hasDebug)
+                        {
+                            targetsMissingDebug++;
+                        }
+                    }
 
-                    m_DebugVisible.boolValue = EditorGUILayout.BeginToggleGroup(s_Styles.m_DebugVisible, m_DebugVisible.boolValue);
+                    if (0 < targetsMissingDebug && targetsMissingDebug < targets.Length)
+                    {
+                        EditorGUILayout.HelpBox("Some of the selected NavMesh surfaces need to be baked again for debug data to be collected.", MessageType.Warning);
+                    }
+                    else if (targetsMissingDebug == targets.Length && targets.Length > 1)
+                    {
+                        EditorGUILayout.HelpBox("The selected NavMesh surfaces need to be baked again for debug data to be collected.", MessageType.Warning);
+                    }
+                    else if (targetsMissingDebug == 1 && targets.Length == 1)
+                    {
+                        var oneSurfaceMessage = ((NavMeshSurface)target).bakedNavMeshData ?
+                            "The NavMesh surface needs to be baked again for debug data to be collected." :
+                            "Bake the NavMesh surface for debug data to be collected.";
+                        EditorGUILayout.HelpBox(oneSurfaceMessage, MessageType.Warning);
+                    }
 
                     EditorGUI.indentLevel++;
                     EditorGUILayout.PropertyField(m_ShowInputGeometry, s_Styles.m_ShowInputGeometry);
@@ -315,12 +320,6 @@ namespace UnityEditor.AI
                     EditorGUILayout.PropertyField(m_ShowPolyMesh, s_Styles.m_ShowPolyMesh);
                     EditorGUILayout.PropertyField(m_ShowPolyMeshDetail, s_Styles.m_ShowPolyMeshDetail);
                     EditorGUI.indentLevel--;
-
-                    EditorGUILayout.EndToggleGroup();
-
-                    debugVisibilityChanged = EditorGUI.EndChangeCheck();
-
-                    EditorGUILayout.HelpBox("Debug options help visualize various stages of the NavMesh building process. Data is collected when Bake is pressed and it is shown at the location where the NavMesh is built.", MessageType.None);
                 }
 
                 EditorGUILayout.Space();
@@ -333,8 +332,9 @@ namespace UnityEditor.AI
 
             var hadError = false;
             var multipleTargets = targets.Length > 1;
-            foreach (NavMeshSurface navSurface in targets)
+            foreach (var o in targets)
             {
+                var navSurface = (NavMeshSurface)o;
                 var settings = navSurface.GetBuildSettings();
                 // Calculating bounds is potentially expensive when unbounded - so here we just use the center/size.
                 // It means the validation is not checking vertical voxel limit correctly when the surface is set to something else than "in volume".
@@ -360,12 +360,6 @@ namespace UnityEditor.AI
                     GUILayout.EndHorizontal();
                     hadError = true;
                 }
-
-                if (debugVisibilityChanged)
-                {
-                    navSurface.UpdateDebugFlags();
-                    SceneView.RepaintAll();
-                }
             }
 
             if (hadError)
@@ -377,17 +371,15 @@ namespace UnityEditor.AI
                 GUILayout.Space(EditorGUIUtility.labelWidth);
                 if (GUILayout.Button("Clear"))
                 {
-                    foreach (NavMeshSurface s in targets)
-                        ClearSurface(s);
+                    foreach (var s in targets)
+                        ClearSurface((NavMeshSurface)s);
                     SceneView.RepaintAll();
                 }
 
-                bool wantDebug = s_DebugVisualization.flags != NavMeshBuildDebugFlags.None;
-                GUIContent bakeButtonText = wantDebug ? s_Styles.m_BakeButtonWithDebug : s_Styles.m_BakeButton;
-                if (GUILayout.Button(bakeButtonText))
+                if (GUILayout.Button(s_Styles.m_BakeButton))
                 {
-                    foreach (NavMeshSurface navSurface in targets)
-                        BakeSurface(navSurface);
+                    foreach (var navSurface in targets)
+                        BakeSurface((NavMeshSurface)navSurface);
                     SceneView.RepaintAll();
                 }
                 GUILayout.EndHorizontal();
@@ -417,8 +409,7 @@ namespace UnityEditor.AI
         {
             if (navSurface.bakedNavMeshData)
             {
-                navSurface.UpdateDebugFlags();
-                NavMeshEditorHelpers.DrawBuildDebug(navSurface.bakedNavMeshData, navSurface.m_VisibleDebug);
+                NavMeshEditorHelpers.DrawBuildDebug(navSurface.bakedNavMeshData, navSurface.visibleDebug);
             }
         }
 

@@ -37,13 +37,13 @@ public class UpdateBuilder : MonoBehaviour
 
 #if UNITY_EDITOR
         NavMeshBuildDebugFlags initGroups = NavMeshBuildDebugFlags.None;
-        NavMeshSurface.ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.InputGeometry, showInputGeometry);
-        NavMeshSurface.ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.Voxels, showVoxels);
-        NavMeshSurface.ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.Regions, showRegions);
-        NavMeshSurface.ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.RawContours, showRawContours);
-        NavMeshSurface.ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.SimplifiedContours, showContours);
-        NavMeshSurface.ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.PolygonMeshes, showPolyMesh);
-        NavMeshSurface.ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.PolygonMeshesDetail, showPolyMeshDetail);
+        ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.InputGeometry, showInputGeometry);
+        ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.Voxels, showVoxels);
+        ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.Regions, showRegions);
+        ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.RawContours, showRawContours);
+        ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.SimplifiedContours, showContours);
+        ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.PolygonMeshes, showPolyMesh);
+        ApplyDebugFlags(ref initGroups, NavMeshBuildDebugFlags.PolygonMeshesDetail, showPolyMeshDetail);
         m_Debug = new NavMeshBuildDebugSettings();
         m_Debug.flags = initGroups;
 #endif
@@ -102,13 +102,13 @@ public class UpdateBuilder : MonoBehaviour
         else if (debugGroup == 0)
         {
             visibleGroups = NavMeshBuildDebugFlags.None;
-            NavMeshSurface.ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.InputGeometry, showInputGeometry);
-            NavMeshSurface.ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.Voxels, showVoxels);
-            NavMeshSurface.ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.Regions, showRegions);
-            NavMeshSurface.ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.RawContours, showRawContours);
-            NavMeshSurface.ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.SimplifiedContours, showContours);
-            NavMeshSurface.ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.PolygonMeshes, showPolyMesh);
-            NavMeshSurface.ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.PolygonMeshesDetail, showPolyMeshDetail);
+            ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.InputGeometry, showInputGeometry);
+            ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.Voxels, showVoxels);
+            ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.Regions, showRegions);
+            ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.RawContours, showRawContours);
+            ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.SimplifiedContours, showContours);
+            ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.PolygonMeshes, showPolyMesh);
+            ApplyDebugFlags(ref visibleGroups, NavMeshBuildDebugFlags.PolygonMeshesDetail, showPolyMeshDetail);
         }
         else
         {
@@ -141,4 +141,18 @@ public class UpdateBuilder : MonoBehaviour
         NavMeshEditorHelpers.DrawBuildDebug(m_NavMeshData, visibleGroups);
 #endif
     }
+
+#if UNITY_EDITOR
+    void ApplyDebugFlags(ref NavMeshBuildDebugFlags flags, NavMeshBuildDebugFlags toSet, bool active)
+    {
+        if (active)
+        {
+            flags |= toSet;
+        }
+        else
+        {
+            flags &= ~toSet;
+        }
+    }
+#endif
 }

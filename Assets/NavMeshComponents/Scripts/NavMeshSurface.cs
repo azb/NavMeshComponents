@@ -66,10 +66,8 @@ namespace UnityEngine.AI
         public float voxelSize { get { return m_VoxelSize; } set { m_VoxelSize = value; } }
 
 #if UNITY_EDITOR
-        [SerializeField]
-        [Tooltip("Show or hide all the available debug data for this NavMesh surface.")]
-        private bool m_DebugVisible = true;
-        public bool debugVisible { get { return m_DebugVisible; } set { m_DebugVisible = value; } }
+        private bool m_DebugEnabled = false;
+        public bool debugEnabled { get { return m_DebugEnabled; } set { m_DebugEnabled = value; } }
         [SerializeField]
         [Tooltip("The exact source geometry used when baking this NavMesh surface.")]
         private bool m_ShowInputGeometry = true;
@@ -99,8 +97,50 @@ namespace UnityEngine.AI
         private bool m_ShowPolyMeshDetail = true;
         public bool showPolyMeshDetail { get { return m_ShowPolyMeshDetail; } set { m_ShowPolyMeshDetail = value; } }
 
+        public NavMeshBuildDebugFlags visibleDebug
+        {
+            get
+            {
+                var flags = NavMeshBuildDebugFlags.None;
+                if (m_DebugEnabled)
+                {
+                    if (m_ShowInputGeometry)
+                    {
+                        flags |= NavMeshBuildDebugFlags.InputGeometry;
+                    }
+                    if (m_ShowVoxels)
+                    {
+                        flags |= NavMeshBuildDebugFlags.Voxels;
+                    }
+                    if (m_ShowRegions)
+                    {
+                        flags |= NavMeshBuildDebugFlags.Regions;
+                    }
+                    if (m_ShowRawContours)
+                    {
+                        flags |= NavMeshBuildDebugFlags.RawContours;
+                    }
+                    if (m_ShowContours)
+                    {
+                        flags |= NavMeshBuildDebugFlags.SimplifiedContours;
+                    }
+                    if (m_ShowPolyMesh)
+                    {
+                        flags |= NavMeshBuildDebugFlags.PolygonMeshes;
+                    }
+                    if (m_ShowPolyMeshDetail)
+                    {
+                        flags |= NavMeshBuildDebugFlags.PolygonMeshesDetail;
+                    }
+                }
+                return flags;
+            }
+        }
+
         [HideInInspector]
-        public NavMeshBuildDebugFlags m_VisibleDebug = NavMeshBuildDebugFlags.All;
+        NavMeshBuildDebugFlags m_CollectedDebug;
+        public bool hasDebug { get { return m_CollectedDebug != NavMeshBuildDebugFlags.None; } }
+        public void InvalidateDebug() { m_CollectedDebug = NavMeshBuildDebugFlags.None; }
 #endif
 
         // Currently not supported advanced options
@@ -125,64 +165,11 @@ namespace UnityEngine.AI
             get { return s_NavMeshSurfaces; }
         }
 
-#if UNITY_EDITOR
-        public void UpdateDebugFlags()
-        {
-            m_VisibleDebug = NavMeshBuildDebugFlags.None;
-            if (m_DebugVisible)
-            {
-                if (m_ShowInputGeometry)
-                {
-                    m_VisibleDebug |= NavMeshBuildDebugFlags.InputGeometry;
-                }
-                if (m_ShowVoxels)
-                {
-                    m_VisibleDebug |= NavMeshBuildDebugFlags.Voxels;
-                }
-                if (m_ShowRegions)
-                {
-                    m_VisibleDebug |= NavMeshBuildDebugFlags.Regions;
-                }
-                if (m_ShowRawContours)
-                {
-                    m_VisibleDebug |= NavMeshBuildDebugFlags.RawContours;
-                }
-                if (m_ShowContours)
-                {
-                    m_VisibleDebug |= NavMeshBuildDebugFlags.SimplifiedContours;
-                }
-                if (m_ShowPolyMesh)
-                {
-                    m_VisibleDebug |= NavMeshBuildDebugFlags.PolygonMeshes;
-                }
-                if (m_ShowPolyMeshDetail)
-                {
-                    m_VisibleDebug |= NavMeshBuildDebugFlags.PolygonMeshesDetail;
-                }
-            }
-        }
-
-        public static void ApplyDebugFlags(ref NavMeshBuildDebugFlags flags, NavMeshBuildDebugFlags toSet, bool active)
-        {
-            if (active)
-            {
-                flags |= toSet;
-            }
-            else
-            {
-                flags &= ~toSet;
-            }
-        }
-#endif
 
         void OnEnable()
         {
             Register(this);
             AddData();
-
-#if UNITY_EDITOR
-            UpdateDebugFlags();
-#endif
         }
 
         void OnDisable()
@@ -258,6 +245,10 @@ namespace UnityEngine.AI
                 if (isActiveAndEnabled)
                     AddData();
             }
+
+#if UNITY_EDITOR
+            m_CollectedDebug = debugSettings.flags;
+#endif
         }
 
         static void Register(NavMeshSurface surface)
@@ -441,10 +432,6 @@ namespace UnityEngine.AI
                     AddData();
                 }
             }
-
-#if UNITY_EDITOR
-            UpdateDebugFlags();
-#endif
         }
 
 #if UNITY_EDITOR
