@@ -146,12 +146,13 @@ namespace UnityEngine.AI
         // Currently not supported advanced options
         [SerializeField]
         bool m_BuildHeightMesh;
-        public bool buildHeightMesh { get { return m_BuildHeightMesh; } set { m_OverrideTileSize = value; } }
+        public bool buildHeightMesh { get { return m_BuildHeightMesh; } set { m_BuildHeightMesh = value; } }
 
         // Reference to whole scene navmesh data asset.
+        [UnityEngine.Serialization.FormerlySerializedAs("m_BakedNavMeshData")]
         [SerializeField]
-        NavMeshData m_BakedNavMeshData;
-        public NavMeshData bakedNavMeshData { get { return m_BakedNavMeshData; } set { m_BakedNavMeshData = value; } }
+        NavMeshData m_NavMeshData;
+        public NavMeshData navMeshData { get { return m_NavMeshData; } set { m_NavMeshData = value; } }
 
         // Do not serialize - runtime only state.
         NavMeshDataInstance m_NavMeshDataInstance;
@@ -183,9 +184,9 @@ namespace UnityEngine.AI
             if (m_NavMeshDataInstance.valid)
                 return;
 
-            if (m_BakedNavMeshData != null)
+            if (m_NavMeshData != null)
             {
-                m_NavMeshDataInstance = NavMesh.AddNavMeshData(m_BakedNavMeshData, transform.position, transform.rotation);
+                m_NavMeshDataInstance = NavMesh.AddNavMeshData(m_NavMeshData, transform.position, transform.rotation);
                 m_NavMeshDataInstance.owner = this;
             }
 
@@ -202,6 +203,11 @@ namespace UnityEngine.AI
         public NavMeshBuildSettings GetBuildSettings()
         {
             var buildSettings = NavMesh.GetSettingsByID(m_AgentTypeID);
+            if (buildSettings.agentTypeID == -1)
+            {
+                Debug.LogWarning("No build settings for agent type ID " + agentTypeID, this);
+                buildSettings.agentTypeID = m_AgentTypeID;
+            }
 
             if (overrideTileSize)
             {
@@ -216,12 +222,7 @@ namespace UnityEngine.AI
             return buildSettings;
         }
 
-        public void Bake()
-        {
-            Bake(new NavMeshBuildDebugSettings());
-        }
-
-        public void Bake(NavMeshBuildDebugSettings debugSettings)
+        public void BuildNavMesh(NavMeshBuildDebugSettings debug = new NavMeshBuildDebugSettings())
         {
             var sources = CollectSources();
 
@@ -233,22 +234,36 @@ namespace UnityEngine.AI
                 sourcesBounds = CalculateWorldBounds(sources);
             }
 
-            NavMeshBuildSettings settings = GetBuildSettings();
-            settings.debug = debugSettings;
-            var data = NavMeshBuilder.BuildNavMeshData(settings, sources, sourcesBounds, transform.position, transform.rotation);
+            var settings = GetBuildSettings();
+            settings.debug = debug;
+            var data = NavMeshBuilder.BuildNavMeshData(settings,
+                    sources, sourcesBounds, transform.position, transform.rotation);
 
             if (data != null)
             {
                 data.name = gameObject.name;
                 RemoveData();
-                m_BakedNavMeshData = data;
+                m_NavMeshData = data;
                 if (isActiveAndEnabled)
                     AddData();
             }
 
 #if UNITY_EDITOR
-            m_CollectedDebug = debugSettings.flags;
+            m_CollectedDebug = debug.flags;
 #endif
+        }
+
+        public AsyncOperation UpdateNavMesh(NavMeshData data)
+        {
+            var sources = CollectSources();
+
+            // Use unscaled bounds - this differs in behaviour from e.g. collider components.
+            // But is similar to reflection probe - and since navmesh data has no scaling support - it is the right choice here.
+            var sourcesBounds = new Bounds(m_Center, Abs(m_Size));
+            if (m_CollectObjects == CollectObjects.All || m_CollectObjects == CollectObjects.Children)
+                sourcesBounds = CalculateWorldBounds(sources);
+
+            return NavMeshBuilder.UpdateNavMeshDataAsync(data, GetBuildSettings(), sources, sourcesBounds);
         }
 
         static void Register(NavMeshSurface surface)
@@ -390,18 +405,18 @@ namespace UnityEngine.AI
                 switch (src.shape)
                 {
                     case NavMeshBuildSourceShape.Mesh:
-                        {
-                            var m = src.sourceObject as Mesh;
-                            result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, m.bounds));
-                            break;
-                        }
+                    {
+                        var m = src.sourceObject as Mesh;
+                        result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, m.bounds));
+                        break;
+                    }
                     case NavMeshBuildSourceShape.Terrain:
-                        {
-                            // Terrain pivot is lower/left corner - shift bounds accordingly
-                            var t = src.sourceObject as TerrainData;
-                            result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, new Bounds(0.5f * t.size, t.size)));
-                            break;
-                        }
+                    {
+                        // Terrain pivot is lower/left corner - shift bounds accordingly
+                        var t = src.sourceObject as TerrainData;
+                        result.Encapsulate(GetWorldBounds(worldToLocal * src.transform, new Bounds(0.5f * t.size, t.size)));
+                        break;
+                    }
                     case NavMeshBuildSourceShape.Box:
                     case NavMeshBuildSourceShape.Sphere:
                     case NavMeshBuildSourceShape.Capsule:
@@ -438,7 +453,7 @@ namespace UnityEngine.AI
         bool UnshareNavMeshAsset()
         {
             // Nothing to unshare
-            if (m_BakedNavMeshData == null)
+            if (m_NavMeshData == null)
                 return false;
 
             // Prefab parent owns the asset reference
@@ -448,14 +463,14 @@ namespace UnityEngine.AI
 
             // An instance can share asset reference only with its prefab parent
             var prefab = UnityEditor.PrefabUtility.GetPrefabParent(this) as NavMeshSurface;
-            if (prefab != null && prefab.bakedNavMeshData == bakedNavMeshData)
+            if (prefab != null && prefab.navMeshData == navMeshData)
                 return false;
 
             // Don't allow referencing an asset that's assigned to another surface
             for (var i = 0; i < s_NavMeshSurfaces.Count; ++i)
             {
                 var surface = s_NavMeshSurfaces[i];
-                if (surface != this && surface.m_BakedNavMeshData == m_BakedNavMeshData)
+                if (surface != this && surface.m_NavMeshData == m_NavMeshData)
                     return true;
             }
 
@@ -468,7 +483,7 @@ namespace UnityEngine.AI
             if (UnshareNavMeshAsset())
             {
                 Debug.LogWarning("Duplicating NavMeshSurface does not duplicate the referenced navmesh data", this);
-                m_BakedNavMeshData = null;
+                m_NavMeshData = null;
             }
 
             var settings = NavMesh.GetSettingsByID(m_AgentTypeID);
