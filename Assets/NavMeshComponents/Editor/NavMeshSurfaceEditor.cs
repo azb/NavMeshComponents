@@ -379,8 +379,10 @@ namespace UnityEditor.AI
                         var oper = new AsyncBakeOperation();
 
                         var surf = (NavMeshSurface)s;
+                        var debugSettings = new NavMeshBuildDebugSettings();
+                        debugSettings.flags = surf.debugEnabled ? NavMeshBuildDebugFlags.All : NavMeshBuildDebugFlags.None;
                         oper.bakeData = InitializeBakeData(surf);
-                        oper.bakeOperation = surf.UpdateNavMesh(oper.bakeData);
+                        oper.bakeOperation = surf.UpdateNavMesh(oper.bakeData, debugSettings);
                         oper.surface = surf;
 
                         s_BakeOperations.Add(oper);

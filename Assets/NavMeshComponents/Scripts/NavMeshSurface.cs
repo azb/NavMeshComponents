@@ -253,7 +253,7 @@ namespace UnityEngine.AI
 #endif
         }
 
-        public AsyncOperation UpdateNavMesh(NavMeshData data)
+        public AsyncOperation UpdateNavMesh(NavMeshData data, NavMeshBuildDebugSettings debug = new NavMeshBuildDebugSettings())
         {
             var sources = CollectSources();
 
@@ -263,7 +263,13 @@ namespace UnityEngine.AI
             if (m_CollectObjects == CollectObjects.All || m_CollectObjects == CollectObjects.Children)
                 sourcesBounds = CalculateWorldBounds(sources);
 
-            return NavMeshBuilder.UpdateNavMeshDataAsync(data, GetBuildSettings(), sources, sourcesBounds);
+            var settings = GetBuildSettings();
+            settings.debug = debug;
+#if UNITY_EDITOR
+            m_CollectedDebug = debug.flags;
+#endif
+
+            return NavMeshBuilder.UpdateNavMeshDataAsync(data, settings, sources, sourcesBounds);
         }
 
         static void Register(NavMeshSurface surface)
