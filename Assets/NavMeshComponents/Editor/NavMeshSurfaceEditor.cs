@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using UnityEditor.IMGUI.Controls;
 using UnityEditor.SceneManagement;
+using UnityEditorInternal;
 using UnityEngine.AI;
 using UnityEngine;
-using System.Linq;
 
 namespace UnityEditor.AI
 {
@@ -37,6 +39,15 @@ namespace UnityEditor.AI
             public readonly GUIContent m_ShowPolyMeshDetail = new GUIContent("Show Poly Mesh Detail");
         }
 
+        struct AsyncBakeOperation
+        {
+            public NavMeshSurface surface;
+            public NavMeshData bakeData;
+            public AsyncOperation bakeOperation;
+        }
+
+        static List<AsyncBakeOperation> s_BakeOperations = new List<AsyncBakeOperation>();
+
         static Styles s_Styles;
 
         static bool s_ShowDebugOptions;
@@ -44,6 +55,14 @@ namespace UnityEditor.AI
         static Color s_HandleColor = new Color(127f, 214f, 244f, 100f) / 255;
         static Color s_HandleColorSelected = new Color(127f, 214f, 244f, 210f) / 255;
         static Color s_HandleColorDisabled = new Color(127f * 0.75f, 214f * 0.75f, 244f * 0.75f, 100f) / 255;
+
+        static int s_HandleControlIDHint = typeof(NavMeshSurfaceEditor).Name.GetHashCode();
+        BoxBoundsHandle m_BoundsHandle = new BoxBoundsHandle(s_HandleControlIDHint);
+
+        bool editingCollider
+        {
+            get { return EditMode.editMode == EditMode.SceneViewEditMode.Collider && EditMode.IsOwner(this); }
+        }
 
         void OnEnable()
         {
@@ -81,47 +100,33 @@ namespace UnityEditor.AI
             return targetPath;
         }
 
-        void CreateNavMeshAsset(NavMeshSurface surface)
+        static void CreateNavMeshAsset(NavMeshSurface surface)
         {
             var targetPath = GetAndEnsureTargetPath(surface);
 
             var combinedAssetPath = Path.Combine(targetPath, "NavMesh-" + surface.name + ".asset");
             combinedAssetPath = AssetDatabase.GenerateUniqueAssetPath(combinedAssetPath);
-            AssetDatabase.CreateAsset(surface.bakedNavMeshData, combinedAssetPath);
+            AssetDatabase.CreateAsset(surface.navMeshData, combinedAssetPath);
         }
 
-        NavMeshData GetNavMeshAssetToDelete(NavMeshSurface navSurface)
+        static NavMeshData GetNavMeshAssetToDelete(NavMeshSurface navSurface)
         {
             var prefabType = PrefabUtility.GetPrefabType(navSurface);
             if (prefabType == PrefabType.PrefabInstance || prefabType == PrefabType.DisconnectedPrefabInstance)
             {
                 // Don't allow deleting the asset belonging to the prefab parent
                 var parentSurface = PrefabUtility.GetPrefabParent(navSurface) as NavMeshSurface;
-                if (parentSurface && navSurface.bakedNavMeshData == parentSurface.bakedNavMeshData)
+                if (parentSurface && navSurface.navMeshData == parentSurface.navMeshData)
                     return null;
             }
-            return navSurface.bakedNavMeshData;
-        }
-
-        void BakeSurface(NavMeshSurface navSurface)
-        {
-            var assetToDelete = GetNavMeshAssetToDelete(navSurface);
-            navSurface.Bake();
-            EditorUtility.SetDirty(navSurface);
-
-            if (assetToDelete)
-            {
-                AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(assetToDelete));
-            }
-            CreateNavMeshAsset(navSurface);
-            EditorSceneManager.MarkSceneDirty(navSurface.gameObject.scene);
+            return navSurface.navMeshData;
         }
 
         void ClearSurface(NavMeshSurface navSurface)
         {
             var assetToDelete = GetNavMeshAssetToDelete(navSurface);
             navSurface.RemoveData();
-            navSurface.bakedNavMeshData = null;
+            navSurface.navMeshData = null;
             EditorUtility.SetDirty(navSurface);
 
             if (assetToDelete)
@@ -155,8 +160,14 @@ namespace UnityEditor.AI
             if ((CollectObjects)m_CollectObjects.enumValueIndex == CollectObjects.Volume)
             {
                 EditorGUI.indentLevel++;
+                InspectorEditButtonGUI();
                 EditorGUILayout.PropertyField(m_Size);
                 EditorGUILayout.PropertyField(m_Center);
+            }
+            else
+            {
+                if (editingCollider)
+                    EditMode.QuitEditMode();
             }
 
             EditorGUILayout.PropertyField(m_LayerMask, s_Styles.m_LayerMask);
@@ -280,12 +291,92 @@ namespace UnityEditor.AI
 
                 if (GUILayout.Button("Bake"))
                 {
-                    foreach (NavMeshSurface navSurface in targets)
-                        BakeSurface(navSurface);
-                    SceneView.RepaintAll();
+                    // Remove first to avoid double registration of the callback
+                    EditorApplication.update -= UpdateAsyncBuildOperations;
+                    EditorApplication.update += UpdateAsyncBuildOperations;
+
+                    foreach (NavMeshSurface surf in targets)
+                    {
+                        var oper = new AsyncBakeOperation();
+
+                        oper.bakeData = InitializeBakeData(surf);
+                        oper.bakeOperation = surf.UpdateNavMesh(oper.bakeData);
+                        oper.surface = surf;
+
+                        s_BakeOperations.Add(oper);
+                    }
                 }
+
                 GUILayout.EndHorizontal();
             }
+
+            // Show progress for the selected targets
+            for (int i = s_BakeOperations.Count - 1; i >= 0; --i)
+            {
+                if (!targets.Contains(s_BakeOperations[i].surface))
+                    continue;
+
+                var oper = s_BakeOperations[i].bakeOperation;
+                if (oper == null)
+                    continue;
+
+                var p = oper.progress;
+                if (oper.isDone)
+                {
+                    SceneView.RepaintAll();
+                    continue;
+                }
+
+                GUILayout.BeginHorizontal();
+
+                if (GUILayout.Button("Cancel", EditorStyles.miniButton))
+                {
+                    var bakeData = s_BakeOperations[i].bakeData;
+                    UnityEngine.AI.NavMeshBuilder.Cancel(bakeData);
+                    s_BakeOperations.RemoveAt(i);
+                }
+
+                EditorGUI.ProgressBar(EditorGUILayout.GetControlRect(), p, "Baking: " + (int)(100 * p) + "%");
+                if (p <= 1)
+                    Repaint();
+
+                GUILayout.EndHorizontal();
+            }
+        }
+
+        static NavMeshData InitializeBakeData(NavMeshSurface surface)
+        {
+            var emptySources = new List<NavMeshBuildSource>();
+            var emptyBounds = new Bounds();
+            return UnityEngine.AI.NavMeshBuilder.BuildNavMeshData(surface.GetBuildSettings(), emptySources, emptyBounds
+                , surface.transform.position, surface.transform.rotation);
+        }
+
+        static void UpdateAsyncBuildOperations()
+        {
+            foreach (var oper in s_BakeOperations)
+            {
+                if (oper.surface == null || oper.bakeOperation == null)
+                    continue;
+
+                if (oper.bakeOperation.isDone)
+                {
+                    var surface = oper.surface;
+                    var delete = GetNavMeshAssetToDelete(surface);
+                    if (delete != null)
+                        AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(delete));
+
+                    surface.RemoveData();
+                    surface.navMeshData = oper.bakeData;
+                    if (surface.isActiveAndEnabled)
+                        surface.AddData();
+                    CreateNavMeshAsset(surface);
+                    EditorSceneManager.MarkSceneDirty(surface.gameObject.scene);
+                }
+            }
+            s_BakeOperations.RemoveAll(o => o.bakeOperation == null || o.bakeOperation.isDone);
+            if (s_BakeOperations.Count == 0)
+                EditorApplication.update -= UpdateAsyncBuildOperations;
         }
 
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.Pickable)]
@@ -330,9 +421,9 @@ namespace UnityEditor.AI
             }
             else
             {
-                if (navSurface.bakedNavMeshData != null)
+                if (navSurface.navMeshData != null)
                 {
-                    var bounds = navSurface.bakedNavMeshData.sourceBounds;
+                    var bounds = navSurface.navMeshData.sourceBounds;
                     Gizmos.color = Color.grey;
                     Gizmos.DrawWireCube(bounds.center, bounds.size);
                 }
@@ -344,8 +435,49 @@ namespace UnityEditor.AI
             Gizmos.DrawIcon(navSurface.transform.position, "NavMeshSurface Icon", true);
         }
 
+        void InspectorEditButtonGUI()
+        {
+            var navSurface = (NavMeshSurface)target;
+            var bounds = new Bounds(navSurface.transform.position, navSurface.size);
+
+            EditMode.DoEditModeInspectorModeButton(
+                EditMode.SceneViewEditMode.Collider,
+                "Edit Volume",
+                EditorGUIUtility.IconContent("EditCollider"),
+                bounds,
+                this
+                );
+        }
+
+        void OnSceneGUI()
+        {
+            if (!editingCollider)
+                return;
+
+            var navSurface = (NavMeshSurface)target;
+            var color = navSurface.enabled ? s_HandleColor : s_HandleColorDisabled;
+            var localToWorld = Matrix4x4.TRS(navSurface.transform.position, navSurface.transform.rotation, Vector3.one);
+            using (new Handles.DrawingScope(color, localToWorld))
+            {
+                m_BoundsHandle.center = navSurface.center;
+                m_BoundsHandle.size = navSurface.size;
+
+                EditorGUI.BeginChangeCheck();
+                m_BoundsHandle.DrawHandle();
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Undo.RecordObject(navSurface, "Modified NavMesh Surface");
+                    Vector3 center = m_BoundsHandle.center;
+                    Vector3 size = m_BoundsHandle.size;
+                    navSurface.center = center;
+                    navSurface.size = size;
+                    EditorUtility.SetDirty(target);
+                }
+            }
+        }
+
         [MenuItem("GameObject/AI/NavMesh Surface", false, 2000)]
-        static public void CreateNavMeshSurface(MenuCommand menuCommand)
+        public static void CreateNavMeshSurface(MenuCommand menuCommand)
         {
             var parent = menuCommand.context as GameObject;
             var go = NavMeshComponentsGUIUtility.CreateAndSelectGameObject("NavMesh Surface", parent);

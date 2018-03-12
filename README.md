@@ -15,12 +15,13 @@ https://docs.google.com/document/d/1usMrwMHTPNBFyT1hZRt-nQZzRDTciIQRVzmA7MQsFNw
 
 # How To Get Started
 
-Download and install Unity 5.6.0b1 or newer.
+Download and install the latest release of Unity 5.6.
 
 Clone or download this repository and open the project using the feature build.
 Alternatively, you can copy the contents of `Assets/NavMeshComponents` to an existing project.
 
 Additional examples are available in the `Assets/Examples` folder.
+The examples are provided "as is". They are neither generic nor robust, but serve as inspiration.
 
 _Note: During the beta cycle features and API are subject to change. Back up existing projects before using.
 **Make sure to backup an existing project before opening it with this build**_.
@@ -34,7 +35,7 @@ Q: Can I use navmesh'es for more than one agent size?
 A: yes
 
 Q: Can I put a navmesh in a prefab?  
-A: yes - with some limitiations.
+A: yes - with some limitations.
 
 Q: How do i connect two navmesh surfaces?  
 A: Use the NavMeshLink to connect the two sides

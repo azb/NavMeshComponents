@@ -5,7 +5,7 @@ namespace UnityEngine.AI
     [ExecuteInEditMode]
     [DefaultExecutionOrder(-101)]
     [AddComponentMenu("Navigation/NavMeshLink", 33)]
-    [HelpURL("https://github.com/Unity-Technologies/NavMeshComponents#further-documentation-draft")]
+    [HelpURL("https://github.com/Unity-Technologies/NavMeshComponents#documentation-draft")]
     public class NavMeshLink : MonoBehaviour
     {
         [SerializeField]
@@ -23,6 +23,10 @@ namespace UnityEngine.AI
         [SerializeField]
         float m_Width;
         public float width { get { return m_Width; } set { m_Width = value; UpdateLink(); } }
+
+        [SerializeField]
+        int m_CostModifier = -1;
+        public int costModifier { get { return m_CostModifier; } set { m_CostModifier = value; UpdateLink(); } }
 
         [SerializeField]
         bool m_Bidirectional = true;
@@ -111,7 +115,7 @@ namespace UnityEngine.AI
             link.startPosition = m_StartPoint;
             link.endPosition = m_EndPoint;
             link.width = m_Width;
-            link.costModifier = -1.0f;
+            link.costModifier = m_CostModifier;
             link.bidirectional = m_Bidirectional;
             link.area = m_Area;
             link.agentTypeID = m_AgentTypeID;
