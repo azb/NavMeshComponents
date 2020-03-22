@@ -58,3 +58,6 @@ A: No - you can still use OffMeshLink - however you'll find that NavMeshLink is 
 
 Q: What happened to HeightMesh and Auto Generated OffMeshLinks?  
 A: They're not supported in the new NavMesh building feature. HeightMesh will be added at some point. Auto OffMeshLink generation will possibly be replaced with a solution that allows better control of placement.
+
+Q: Can I use Unity nav mesh areas (like Walkable, Not Walkable, Jump, custom areas) with a NavMesh baked at runtime / if so how do I do it?
+A: <insert answer here>
